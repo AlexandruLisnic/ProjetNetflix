@@ -1,89 +1,87 @@
 import tkinter as tk
-from tkinter import messagebox
-from Lisnic import Client, Film
+from tkinter import ttk
+from Lisnic import clients, films, employes
 
-# Liste des employés (hardcodé)
-employes = [
-    {"code_utilisateur": "admin", "password": "admin123", "type_acces": "total"},
-    {"code_utilisateur": "lecteur", "password": "lecteur123", "type_acces": "lecture"}
-]
 
-# Fonction de vérification des identifiants
-def verifier_login(code, password):
-    for employe in employes:
-        if employe["code_utilisateur"] == code and employe["password"] == password:
-            return employe["type_acces"]
-    return None
+class Application:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Connexion")
 
-# Liste de clients (hardcodé)
-clients = [
-    Client("Doe", "John", "M", "john.doe@email.com", "password123"),
-    Client("Smith", "Jane", "F", "jane.smith@email.com", "password123")
-]
+        self.logged_in_user = None
 
-# Liste de films (hardcodé)
-films = [
-    Film("Action Movie", "1h30", "A thrilling action movie."),
-    Film("Comedy Movie", "1h00", "A funny comedy film.")
-]
+        self.create_login_window()
 
-# Fenêtre principale
-def afficher_principal(acces):
-    root = tk.Tk()
-    root.title("Application de gestion")
+    def create_login_window(self):
+        """Affiche la fenêtre de connexion."""
+        self.clear_window()
 
-    # Label d'information selon l'accès
-    if acces == "total":
-        tk.Label(root, text="Bienvenue (Accès total)").pack()
-    elif acces == "lecture":
-        tk.Label(root, text="Bienvenue (Accès lecture uniquement)").pack()
+        tk.Label(self.root, text="Code utilisateur:").pack()
+        self.entry_user = tk.Entry(self.root)
+        self.entry_user.pack()
 
-    # Affichage de la liste des clients
-    tk.Label(root, text="Clients").pack()
-    for client in clients:
-        tk.Label(root, text=f"{client.nom} {client.prenom} - {client.courriel}").pack()
+        tk.Label(self.root, text="Mot de passe:").pack()
+        self.entry_password = tk.Entry(self.root, show="*")
+        self.entry_password.pack()
 
-    # Affichage de la liste des films
-    tk.Label(root, text="Films").pack()
-    for film in films:
-        tk.Label(root, text=f"{film.nom} - {film.duree}").pack()
+        self.btn_login = tk.Button(self.root, text="Se connecter", command=self.verify_login)
+        self.btn_login.pack()
 
-    # Menu pour quitter ou se déconnecter
-    def quitter():
-        root.quit()
+    def verify_login(self):
+        """Vérifie les identifiants de connexion."""
+        username = self.entry_user.get()
+        password = self.entry_password.get()
 
-    tk.Button(root, text="Quitter", command=quitter).pack()
+        for emp in employes:
+            if emp.code_utilisateur == username and emp.password == emp.hash_password(password):
+                self.logged_in_user = emp
+                self.create_main_window()
+                return
 
-    root.mainloop()
+        tk.messagebox.showerror("Erreur", "Identifiants incorrects")
 
-# Fenêtre de connexion
-def afficher_login():
-    def tenter_connexion():
-        code = entree_code.get()
-        password = entree_password.get()
+    def create_main_window(self):
+        """Affiche la fenêtre principale après connexion."""
+        self.clear_window()
 
-        acces = verifier_login(code, password)
-        if acces:
-            messagebox.showinfo("Succès", "Connexion réussie !")
-            root.destroy()
-            afficher_principal(acces)
-        else:
-            messagebox.showerror("Erreur", "Code utilisateur ou mot de passe incorrect.")
+        tk.Label(self.root, text=f"Bienvenue, {self.logged_in_user.prenom}").pack()
 
-    root = tk.Tk()
-    root.title("Connexion")
+        frame_clients = ttk.LabelFrame(self.root, text="Clients")
+        frame_clients.pack(fill="both", expand=True, padx=10, pady=10)
 
-    tk.Label(root, text="Code utilisateur :").pack()
-    entree_code = tk.Entry(root)
-    entree_code.pack()
+        tree_clients = ttk.Treeview(frame_clients, columns=("Nom", "Prénom", "Courriel"), show="headings")
+        tree_clients.heading("Nom", text="Nom")
+        tree_clients.heading("Prénom", text="Prénom")
+        tree_clients.heading("Courriel", text="Courriel")
 
-    tk.Label(root, text="Mot de passe :").pack()
-    entree_password = tk.Entry(root, show="*")
-    entree_password.pack()
+        for client in clients:
+            tree_clients.insert("", "end", values=(client.nom, client.prenom, client.courriel))
 
-    tk.Button(root, text="Se connecter", command=tenter_connexion).pack()
+        tree_clients.pack(fill="both", expand=True)
 
-    root.mainloop()
+        frame_films = ttk.LabelFrame(self.root, text="Films")
+        frame_films.pack(fill="both", expand=True, padx=10, pady=10)
+
+        tree_films = ttk.Treeview(frame_films, columns=("Nom", "Durée", "Catégories"), show="headings")
+        tree_films.heading("Nom", text="Nom")
+        tree_films.heading("Durée", text="Durée")
+        tree_films.heading("Catégories", text="Catégories")
+
+        for film in films:
+            tree_films.insert("", "end", values=(film.nom, film.duree, ", ".join(film.categories)))
+
+        tree_films.pack(fill="both", expand=True)
+
+        self.btn_logout = tk.Button(self.root, text="Se déconnecter", command=self.create_login_window)
+        self.btn_logout.pack()
+
+    def clear_window(self):
+        """Efface le contenu de la fenêtre."""
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
 
 if __name__ == "__main__":
-    afficher_login()
+    root = tk.Tk()
+    app = Application(root)
+    root.mainloop()

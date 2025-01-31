@@ -1,86 +1,146 @@
 import tkinter as tk
-from tkinter import ttk
-from Lisnic import clients, films, employes
-
+from tkinter import messagebox
+from Lisnic import Employe, Client
 
 class Application:
     def __init__(self, root):
         self.root = root
-        self.root.title("Connexion")
+        self.root.title("Application Gestion Films")
 
-        self.logged_in_user = None
+        # Liste d'employés avec mot de passe haché et niveaux d'accès
+        self.employes = [Employe("admin", "admin123", "total"), Employe("user", "user123", "lecture")]
 
-        self.create_login_window()
+        # Liste de clients
+        self.clients = []
 
-    def create_login_window(self):
-        """Affiche la fenêtre de connexion."""
-        self.clear_window()
+        # Fenêtre de login
+        self.login_window()
 
-        tk.Label(self.root, text="Code utilisateur:").pack()
-        self.entry_user = tk.Entry(self.root)
-        self.entry_user.pack()
+    def login_window(self):
+        self.login_frame = tk.Frame(self.root)
+        self.login_frame.pack()
 
-        tk.Label(self.root, text="Mot de passe:").pack()
-        self.entry_password = tk.Entry(self.root, show="*")
-        self.entry_password.pack()
+        self.username_label = tk.Label(self.login_frame, text="Nom d'utilisateur:")
+        self.username_label.pack()
 
-        self.btn_login = tk.Button(self.root, text="Se connecter", command=self.verify_login)
-        self.btn_login.pack()
+        self.username_entry = tk.Entry(self.login_frame)
+        self.username_entry.pack()
 
-    def verify_login(self):
-        """Vérifie les identifiants de connexion."""
-        username = self.entry_user.get()
-        password = self.entry_password.get()
+        self.password_label = tk.Label(self.login_frame, text="Mot de passe:")
+        self.password_label.pack()
 
-        for emp in employes:
-            if emp.code_utilisateur == username and emp.password == emp.hash_password(password):
-                self.logged_in_user = emp
-                self.create_main_window()
-                return
+        self.password_entry = tk.Entry(self.login_frame, show="*")
+        self.password_entry.pack()
 
-        tk.messagebox.showerror("Erreur", "Identifiants incorrects")
+        self.login_button = tk.Button(self.login_frame, text="Se connecter", command=self.login)
+        self.login_button.pack()
 
-    def create_main_window(self):
-        """Affiche la fenêtre principale après connexion."""
-        self.clear_window()
+    def login(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()
 
-        tk.Label(self.root, text=f"Bienvenue, {self.logged_in_user.prenom}").pack()
+        # Vérification des identifiants
+        employe = next((e for e in self.employes if e.username == username), None)
+        if employe and employe.check_password(password):
+            self.login_frame.destroy()
+            self.main_window(employe)
+        else:
+            messagebox.showerror("Erreur", "Nom d'utilisateur ou mot de passe incorrect.")
 
-        frame_clients = ttk.LabelFrame(self.root, text="Clients")
-        frame_clients.pack(fill="both", expand=True, padx=10, pady=10)
+    def main_window(self, employe):
+        self.main_frame = tk.Frame(self.root)
+        self.main_frame.pack()
 
-        tree_clients = ttk.Treeview(frame_clients, columns=("Nom", "Prénom", "Courriel"), show="headings")
-        tree_clients.heading("Nom", text="Nom")
-        tree_clients.heading("Prénom", text="Prénom")
-        tree_clients.heading("Courriel", text="Courriel")
+        # Accès aux films et aux clients en fonction du niveau d'accès
+        self.clients_listbox = tk.Listbox(self.main_frame)
+        self.clients_listbox.pack()
 
-        for client in clients:
-            tree_clients.insert("", "end", values=(client.nom, client.prenom, client.courriel))
+        self.film_listbox = tk.Listbox(self.main_frame)
+        self.film_listbox.pack()
 
-        tree_clients.pack(fill="both", expand=True)
+        # Menu
+        self.menu = tk.Menu(self.root)
+        self.root.config(menu=self.menu)
+        self.menu.add_command(label="Quitter", command=self.quit)
+        self.menu.add_command(label="Déconnexion", command=self.logout)
 
-        frame_films = ttk.LabelFrame(self.root, text="Films")
-        frame_films.pack(fill="both", expand=True, padx=10, pady=10)
+        if employe.access_level == "total":
+            self.create_client_button = tk.Button(self.main_frame, text="Créer un client", command=self.create_client_window)
+            self.create_client_button.pack()
 
-        tree_films = ttk.Treeview(frame_films, columns=("Nom", "Durée", "Catégories"), show="headings")
-        tree_films.heading("Nom", text="Nom")
-        tree_films.heading("Durée", text="Durée")
-        tree_films.heading("Catégories", text="Catégories")
+            self.modify_client_button = tk.Button(self.main_frame, text="Modifier un client", command=self.modify_client_window)
+            self.modify_client_button.pack()
 
-        for film in films:
-            tree_films.insert("", "end", values=(film.nom, film.duree, ", ".join(film.categories)))
+            self.delete_client_button = tk.Button(self.main_frame, text="Supprimer un client", command=self.delete_client)
+            self.delete_client_button.pack()
 
-        tree_films.pack(fill="both", expand=True)
+    def create_client_window(self):
+        self.create_client_frame = tk.Frame(self.root)
+        self.create_client_frame.pack()
 
-        self.btn_logout = tk.Button(self.root, text="Se déconnecter", command=self.create_login_window)
-        self.btn_logout.pack()
+        self.nom_label = tk.Label(self.create_client_frame, text="Nom:")
+        self.nom_label.pack()
 
-    def clear_window(self):
-        """Efface le contenu de la fenêtre."""
-        for widget in self.root.winfo_children():
-            widget.destroy()
+        self.nom_entry = tk.Entry(self.create_client_frame)
+        self.nom_entry.pack()
 
+        self.prenom_label = tk.Label(self.create_client_frame, text="Prénom:")
+        self.prenom_label.pack()
 
+        self.prenom_entry = tk.Entry(self.create_client_frame)
+        self.prenom_entry.pack()
+
+        self.email_label = tk.Label(self.create_client_frame, text="Email:")
+        self.email_label.pack()
+
+        self.email_entry = tk.Entry(self.create_client_frame)
+        self.email_entry.pack()
+
+        self.mdp_label = tk.Label(self.create_client_frame, text="Mot de passe:")
+        self.mdp_label.pack()
+
+        self.mdp_entry = tk.Entry(self.create_client_frame, show="*")
+        self.mdp_entry.pack()
+
+        self.save_button = tk.Button(self.create_client_frame, text="Sauvegarder", command=self.save_client)
+        self.save_button.pack()
+
+    def save_client(self):
+        nom = self.nom_entry.get()
+        prenom = self.prenom_entry.get()
+        email = self.email_entry.get()
+        mdp = self.mdp_entry.get()
+
+        client = Client(nom, prenom, email, mdp)
+
+        # Validation
+        if not client.validate_email(self.clients):
+            messagebox.showerror("Erreur", "L'email est déjà utilisé.")
+            return
+        if not client.validate_password():
+            messagebox.showerror("Erreur", "Le mot de passe doit contenir au moins 8 caractères.")
+            return
+
+        self.clients.append(client)
+        self.create_client_frame.destroy()
+        messagebox.showinfo("Succès", "Client ajouté avec succès.")
+
+    def modify_client_window(self):
+        # Implémenter la modification d'un client ici
+        pass
+
+    def delete_client(self):
+        # Implémenter la suppression d'un client ici
+        pass
+
+    def logout(self):
+        self.main_frame.destroy()
+        self.login_window()
+
+    def quit(self):
+        self.root.quit()
+
+# Lancer l'application
 if __name__ == "__main__":
     root = tk.Tk()
     app = Application(root)
